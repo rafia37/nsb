@@ -8,6 +8,9 @@ from astropy.coordinates import Angle
 import astropy.units as u
 
 def calculate_nsb(files):
+    """
+
+    """
     for file in files:
         zeropoint = []
         zeropoint_error = []
@@ -49,8 +52,7 @@ def calculate_nsb(files):
                 else:
                     zeropoint.append(float(split_line[1]))
                     zeropoint_error.append(float(split_line[2]))
-        #print(zeropoint)
-        #print(zeropoint_error)
+
 
         med_zero = np.median(zeropoint)
         sigma_clipped_stats(zeropoint, sigma=1.0, iters=10)
@@ -83,6 +85,9 @@ def calculate_nsb(files):
             f.write(line)
 
 if __name__ == '__main__':
+    """
+
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(dest='files', nargs='+')
     files = parser.parse_args().files

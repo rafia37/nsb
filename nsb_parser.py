@@ -10,6 +10,9 @@ warnings.filterwarnings('ignore')
 # read the file
 
 def get_num_lines(file_path):
+    """
+
+    """
     file_path = open(file_path, 'r+')
     buff = mmap.mmap(file_path.fileno(),0)
     lines = 0
@@ -18,6 +21,9 @@ def get_num_lines(file_path):
     return lines
 
 def parse_sqm(file):
+    """
+
+    """
     data = [[] for _ in range(3)]
     with open(file, 'r') as f:
         for line in f:
@@ -33,6 +39,9 @@ def parse_sqm(file):
         return data
 
 def parse_bolt(file):
+    """
+
+    """
     data = [[] for _ in range(12)]
     with open(file, 'r') as f:
         for line in f:
@@ -52,6 +61,9 @@ def parse_bolt(file):
         return data
 
 def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data):
+    """
+
+    """
     zenith_add = []
     tel_add = []
     print('\n### Finding zenith and telescopeSQM data for pointings')
@@ -68,9 +80,11 @@ def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data):
                         min_timestamp = x
                         min_counts = sqm_tel_data[1][index]
                         min_mag = sqm_tel_data[2][index]
+                        az = line_split[3]
+                        elv = line_split[4]
                         tel_col = '{}\t{}\t{}\t{}\t{}\t\t{}\t{:.1f}\n'.format(
                             line_split[0],
-                            min_timestamp,
+                            str(min_timestamp)[:19],
                             az,
                             elv,
                             min_counts,
@@ -91,7 +105,7 @@ def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data):
                         min_mag = sqm_zenith_data[2][index]
                         zenith_col = '{}\t{}\t{}\t\t{}\t{:.1f}\n'.format(
                             line_split[0],
-                            min_timestamp,
+                            str(min_timestamp)[:19],
                             min_counts,
                             min_mag,
                             min_delta
@@ -102,17 +116,13 @@ def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data):
                 zenith_add.append(zenith_col)
     print('    Writing ----> nsb_sqm_tel.txt & nsb_sqm_zenith.txt')
     with open('nsb_sqm_tel.txt', 'w') as f:
-        header = ('filename\t\t\t\t\tsqm_timestamp\t\taz\telv\tcounts\t\tsqm_nsb\tt_delta\n')
+        header = ('filename\t\t\t\t\tsqm_ut\t\t\taz\telv\tcounts\t\tsqm_nsb\tt_delta\n')
         f.write(header)
         for line in tel_add:
-            f.write(line)
-        for line in zenith_add:
             f.write(line)
     with open('nsb_sqm_zenith.txt', 'w') as f:
-        header = ('filename\t\t\t\t\tsqm_timestamp\t\tcounts\t\tsqm_nsb\tt_delta\n')
+        header = ('filename\t\t\t\t\tsqm_ut\t\t\tcounts\t\tsqm_nsb\tt_delta\n')
         f.write(header)
-        for line in tel_add:
-            f.write(line)
         for line in zenith_add:
             f.write(line)
     print('    Done...')
@@ -138,7 +148,7 @@ def calculate_tdelta_bolt(nsb_file,bolt_data):
                         #min_mag = sqm_tel_data[2][index]
                         bolt_col = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:.1f}\n'.format(
                         line_split[0],
-                        min_timestamp,
+                        str(min_timestamp)[:19],
                         bolt_data[1][index],
                         bolt_data[2][index],
                         bolt_data[3][index],
@@ -159,7 +169,7 @@ def calculate_tdelta_bolt(nsb_file,bolt_data):
     print('    Writing ----> nsb_bolt.txt')
 
     with open('nsb_bolt.txt', 'w') as f:
-        header = ('filename\t\t\t\t\tbolt_timestamp\tsky_t\tamb_t\twind\thum\tdew\tcloud\tt_del\n')
+        header = ('filename\t\t\t\t\tbolt_ut\t\t\tsky_t\tamb_t\twind\thum\tdew\tcloud\tt_del\n')
         f.write(header)
         for line in bolt_add:
             f.write(line)
