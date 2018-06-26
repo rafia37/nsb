@@ -30,6 +30,8 @@ def inject_headers(files):
             image_header['LON-OBS'] = ('-110.789161', 'degrees')
             image_header['ALT-OBS'] = ('2791', 'meters')
             image_header['BUNIT'] = ('ADU')
+            image_header['BSCALE'] = 1
+            image_header['PHOT-CO'] = 'na'
             image_header['COORDSYS'] = ('ICRS', 'coordinate system for ra,dec')
             datetime = image_header['DATE-OBS']
             telescope_az = math.radians(float(image_header['AZIMUTH']))
