@@ -1,4 +1,4 @@
-#!/usr/env/python
+#!/usr/bin/env python3
 from astropy.io import fits
 import argparse
 import ephem
@@ -55,7 +55,6 @@ def calculate_moon_distance(datetime, telescope_point):
     degree_distance : distance from the moon in degrees, rounded to 2 points
     """
     # create pomenis observer for Lemmon
-    # TODO make it work without hardcoding
     # NOTE time is in UT of the observation
     pomenis_lemmon = ephem.Observer()
     pomenis_lemmon.lon, pomenis_lemmon.lat = '-110.789161', '32.442525'
@@ -84,6 +83,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(dest='files', nargs='+')
     args = parser.parse_args()
+
 
     inject_headers(args.files)
     print('\nDone...\n')

@@ -92,6 +92,6 @@ if __name__ == '__main__':
     parser.add_argument(dest='files', nargs='+')
     files = parser.parse_args().files
     with open('nsb_data.txt', 'w') as f:
-        header = '#filename\t\t\t\t\tut\t\t\tlocal\t\t\taz\telv\tra\t\tdec\t\texp\tfilt\tifov\tmean_bkg\tmed_bkg\tstd\tzp\tnsb\tphot_co\n'
+        header = '#filename\t\t\t\t\t\tut\t\t\tlocal\t\t\taz\telv\tra\t\tdec\t\texp\tfilt\tifov\tmean_bkg\tmed_bkg\tstd\tzp\tnsb\tphot_co\n'
         f.write(header)
     calculate_nsb(files)
