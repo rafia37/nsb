@@ -47,10 +47,12 @@ def _image_reduce(west_pierside, east_pierside, master_bias, master_flat):
     print('\n### Subtracting bias, dividing flat for west images')
     for filename in tqdm(west_pierside):
         with fits.open(filename, mode='update') as file:
-            science_data = np.rot90(file[0].data, 0)
+            data = file[0].data
+            science_data = data - master_bias
+
+            #science_data = np.rot90(science_data, 0)
             science_header = file[0].header
 
-            science_data = science_data - master_bias
             science_data = np.divide(science_data, master_flat)
             science_header['NSB_BIAS'] = 'True'
             science_header['NSB_FLAT'] = 'True'
@@ -63,10 +65,12 @@ def _image_reduce(west_pierside, east_pierside, master_bias, master_flat):
     print('\n### Subtracting bias, dividing flat for east images')
     for filename in tqdm(east_pierside):
         with fits.open(filename, mode='update') as file:
-            science_data = np.rot90(file[0].data, 0)
+            data = file[0].data
+
+            #science_data = np.rot90(data, 0)
             science_header = file[0].header
 
-            science_data = science_data - master_bias
+            science_data = data - master_bias
             science_data = np.divide(science_data, master_flat)
 
             science_header['NSB_BIAS'] = 'True'

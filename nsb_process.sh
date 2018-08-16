@@ -1,4 +1,4 @@
-for f in moon*-v.fits
+for f in all*-v.fits
 do
     pp_prepare $f
     pp_register $f

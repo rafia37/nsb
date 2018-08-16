@@ -4,6 +4,11 @@ import argparse
 import ephem
 from tqdm import tqdm
 import math
+from astropy import wcs
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+
+import warnings
 
 def inject_headers(files):
     """
@@ -32,7 +37,12 @@ def inject_headers(files):
             image_header['BUNIT'] = ('ADU')
             image_header['BSCALE'] = 1
             image_header['PHOT-CO'] = 'na'
-            image_header['COORDSYS'] = ('ICRS', 'coordinate system for ra,dec')
+            image_header['RADESYSa'] = 'FK5'
+            try:
+                image_header.remove('RADECSYS')
+            except KeyError:
+                pass
+            image_header['COORDSYS'] = ('FK5', 'coordinate system for ra,dec')
             datetime = image_header['DATE-OBS']
             telescope_az = math.radians(float(image_header['AZIMUTH']))
             telescope_alt = math.radians(float(image_header['ALTITUDE']))
@@ -41,7 +51,25 @@ def inject_headers(files):
             image_header['MOONDIST'] = (moon_distance, 'degrees')
             image_header['IFOV'] = ('15066', 'arcseconds')
 
+            # get center ra, dec from image
+            # use this for blocks in future
+            w = wcs.WCS(image[0].header)
+            lat, lon = w.wcs_pix2world(1528, 1528, 1)
+            coord = SkyCoord(lat*u.degree, lon*u.degree, frame='fk5')
+            coord_string = coord.to_string('hmsdms', sep=':')
+            ra, dec = coord_string.split(' ')
+
+            image_header['RA'] = ra
+            image_header['DEC'] = dec
+
+            #ra_string = '{}:{}:{}'.format(ra)
+            # comment out if you do not want to crop
+            science_data = image[0].data
+            image[0].data = science_data[500:2556,500:2556]
+
             image.flush()
+
+
 
 def calculate_moon_distance(datetime, telescope_point):
     """
