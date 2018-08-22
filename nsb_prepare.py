@@ -7,6 +7,7 @@ import math
 from astropy import wcs
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+import os, sys
 
 import warnings
 
@@ -49,26 +50,47 @@ def inject_headers(files):
             telescope_point = (telescope_az, telescope_alt)
             moon_distance = calculate_moon_distance(datetime, telescope_point)
             image_header['MOONDIST'] = (moon_distance, 'degrees')
-            image_header['IFOV'] = ('15066', 'arcseconds')
+            image_header['IFOV'] = ('10136', 'arcseconds')
 
             # get center ra, dec from image
             # use this for blocks in future
-            w = wcs.WCS(image[0].header)
-            lat, lon = w.wcs_pix2world(1528, 1528, 1)
-            coord = SkyCoord(lat*u.degree, lon*u.degree, frame='fk5')
-            coord_string = coord.to_string('hmsdms', sep=':')
-            ra, dec = coord_string.split(' ')
+            try:
+                w = wcs.WCS(image[0].header)
+                lat, lon = w.wcs_pix2world(1528, 1528, 1)
+                coord = SkyCoord(lat*u.degree, lon*u.degree, frame='fk5')
+                coord_string = coord.to_string('hmsdms', sep=':')
+                ra, dec = coord_string.split(' ')
 
-            image_header['RA'] = ra
-            image_header['DEC'] = dec
+                image_header['RA'] = ra
+                image_header['DEC'] = dec
+
+            except KeyError:
+                pass
 
             #ra_string = '{}:{}:{}'.format(ra)
             # comment out if you do not want to crop
-            science_data = image[0].data
-            image[0].data = science_data[500:2556,500:2556]
+            #science_data = image[0].data
+            #image[0].data = science_data[500:2556,500:2556]
 
             image.flush()
 
+def rename(files):
+    """
+    Renames the files to .fits.
+    """
+
+    for file in files:
+        name, ext = os.path.splitext(file)
+
+        if ext == '.fits':
+            pass
+        else:
+
+            new_name = name + '.fits'
+            print('{} ----. {}'.format(file, new_name))
+            os.rename(file, new_name)
+
+    return None
 
 
 def calculate_moon_distance(datetime, telescope_point):
@@ -110,8 +132,13 @@ if __name__ == '__main__':
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(dest='files', nargs='+')
+    parser.add_argument('-r', '--rename', dest='rename', action='store_true')
     args = parser.parse_args()
 
+    if args.rename:
+        rename(args.files)
+        print('\nDone...\n')
 
-    inject_headers(args.files)
-    print('\nDone...\n')
+    else:
+        inject_headers(args.files)
+        print('\nDone...\n')

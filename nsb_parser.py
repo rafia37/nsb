@@ -1,4 +1,4 @@
-#!/usr/env/python
+#!/usr/bin/env python3
 import argparse
 from astropy.time import Time
 from astropy.io import fits
@@ -42,25 +42,24 @@ def parse_bolt(file):
     """
 
     """
-    data = [[] for _ in range(12)]
+    data = [[] for _ in range(11)]
     with open(file, 'r') as f:
         for line in f:
             line = line.strip('\n').split()
             data[0].append('{}T{}'.format(line[0], line[1])) # date and time
-            data[1].append(line[4]) # sky temp (f)
-            data[2].append(line[5]) # ambient temp (f)
-            data[3].append(line[7]) # wind speed (miles)
-            data[4].append(line[8]) # humidity
-            data[5].append(line[9]) # dew
-            data[6].append(line[11]) # rain flag
-            data[7].append(line[12]) # wet flag
-            data[8].append(line[15]) # cloud flag
-            data[9].append(line[16]) # wind flag
-            data[10].append(line[17]) # rain flag
-            data[11].append(line[18]) # day flag
+            data[1].append(line[8]) # sky temp (f)
+            data[2].append(line[9]) # ambient temp (f)
+            data[3].append(line[4]) # wind speed (miles)
+            data[4].append(line[10]) # humidity
+            data[5].append(line[11]) # dew
+            data[6].append(line[5]) # rain flag
+            data[7].append(line[7]) # wet flag
+            data[8].append(line[2]) # cloud flag
+            data[9].append(line[3]) # wind flag
+            data[10].append(line[6]) # rain flag
         return data
 
-def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data):
+def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data, filter_used):
     """
 
     """
@@ -70,7 +69,7 @@ def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data):
     with open(nsb_file, 'r') as file:
         for line in tqdm(file, total=get_num_lines(nsb_file)):
             if line[0] != '#':
-                line_split = line.strip('\n').split('\t')
+                line_split = line.strip('\n').split(',')
                 min_delta = 10 # create just some min
 
                 for index, x in enumerate(sqm_tel_data[0]):
@@ -115,26 +114,26 @@ def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data):
                         pass
                 zenith_add.append(zenith_col)
     print('    Writing ----> nsb_sqm_tel.txt & nsb_sqm_zenith.txt')
-    with open('nsb_sqm_tel.txt', 'w') as f:
+    with open('{}_nsb_sqm_tel.txt'.format(filter_used), 'w') as f:
         header = ('filename\t\t\t\t\tsqm_ut\t\t\taz\telv\tcounts\t\tsqm_nsb\tt_delta\n')
         f.write(header)
         for line in tel_add:
             f.write(line)
-    with open('nsb_sqm_zenith.txt', 'w') as f:
+    with open('{}_nsb_sqm_zenith.txt'.format(filter_used), 'w') as f:
         header = ('filename\t\t\t\t\tsqm_ut\t\t\tcounts\t\tsqm_nsb\tt_delta\n')
         f.write(header)
         for line in zenith_add:
             f.write(line)
     print('    Done...')
 
-def calculate_tdelta_bolt(nsb_file,bolt_data):
+def calculate_tdelta_bolt(nsb_file,bolt_data, filter_used):
     print('\n### Finding boltwood data for pointings')
     bolt_add = []
     with open(nsb_file, 'r') as file:
         for line in tqdm(file, total=get_num_lines(nsb_file)):
 
             if line[0] != '#':
-                line_split = line.strip('\n').split('\t')
+                line_split = line.strip('\n').split(',')
                 min_delta = 60 # create just some min
 
                 for index, x in enumerate(bolt_data[0]):
@@ -168,7 +167,7 @@ def calculate_tdelta_bolt(nsb_file,bolt_data):
                 bolt_add.append(bolt_col)
     print('    Writing ----> nsb_bolt.txt')
 
-    with open('nsb_bolt.txt', 'w') as f:
+    with open('{}_nsb_bolt.txt'.format(filter_used), 'w') as f:
         header = ('filename\t\t\t\t\tbolt_ut\t\t\tsky_t\tamb_t\twind\thum\tdew\tcloud\tt_del\n')
         f.write(header)
         for line in bolt_add:
@@ -188,12 +187,13 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     nsb_file = args.nsb
+    filter_used = nsb_file.split('_')[0]
     bolt_data = parse_bolt(args.bolt)
     sqm_tel_data = parse_sqm(args.sqm_telescope)
     sqm_zenith_data = parse_sqm(args.sqm_zenith)
 
-    calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data)
+    calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data, filter_used)
 
-    calculate_tdelta_bolt(nsb_file, bolt_data)
+    calculate_tdelta_bolt(nsb_file, bolt_data, filter_used)
 
     print('\n####### FINISHED\n')

@@ -5,10 +5,10 @@ from tqdm import tqdm
 import numpy as np
 
 # constants that can be changed
-BOLT_FILE = 'nsb_bolt.txt'
-SQM_TEL_FILE = 'nsb_sqm_tel.txt'
-SQM_ZENITH_FILE = 'nsb_sqm_zenith.txt'
-NSB_FILE = 'nsb_data.txt'
+BOLT_FILE = 'z_nsb_bolt.txt'
+SQM_TEL_FILE = 'z_nsb_sqm_tel.txt'
+SQM_ZENITH_FILE = 'z_nsb_sqm_zenith.txt'
+NSB_FILE = 'z_data.csv'
 
 def inject_headers_sqm(file, format):
     """
