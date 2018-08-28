@@ -1,10 +1,11 @@
+#!/usr/bin/env python3
+
 import sys
 import argparse
 from astropy.io import ascii
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import griddata, Rbf
-import numpy.ma as ma
 import matplotlib.tri as tri
 
 
