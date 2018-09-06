@@ -65,6 +65,7 @@ def inject_headers(files):
                 image_header['DEC'] = dec
 
             except KeyError:
+                print('ERROR {}'.format(filename))
                 pass
 
             #ra_string = '{}:{}:{}'.format(ra)
