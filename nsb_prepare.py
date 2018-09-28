@@ -2,16 +2,16 @@
 from astropy.io import fits
 import argparse
 import ephem
-from tqdm import tqdm
 import math
 from astropy import wcs
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle
 import os, sys
+import numpy as np
+from tqdm import tqdm
 
-import warnings
-
-def inject_headers(files):
+def _inject_headers(files, crop=False):
     """
     Injects headers needed for the photometry pipeline. Adds the headers that
     LL would like for their processing. Updates the existing files.
@@ -22,8 +22,10 @@ def inject_headers(files):
     Returns
     None
     """
-    print('\n####### nsb_prepare.py')
-    print('\n### Adding headers for PHOTOMETRY PIPELINE and NSB LL')
+    print('\n#---------- Adding headers for PHOTOMETRY PIPELINE and NSB LL')
+    print('Calculating moon distance and injecting headers')
+    if crop:
+        print('Cropping images')
     for filename in tqdm(files):
 
         with fits.open(filename, mode='update') as image:
@@ -32,25 +34,37 @@ def inject_headers(files):
             image_header['RDNOISE'] = ('23', 'electrons')
             image_header['TELESCOP'] = 'Pomenis'
             image_header['INSTRUME'] = 'Apogee F9000'
-            image_header['LAT-OBS'] = ('32,442525', 'degrees')
-            image_header['LON-OBS'] = ('-110.789161', 'degrees')
-            image_header['ALT-OBS'] = ('2791', 'meters')
+            image_header['LAT-OBS'] = ('31.9583295', 'degrees')
+            image_header['LON-OBS'] = ('-111.596664', 'degrees')
+            image_header['ALT-OBS'] = ('2096', 'meters')
             image_header['BUNIT'] = ('ADU')
             image_header['BSCALE'] = 1
             image_header['PHOT-CO'] = 'na'
             image_header['RADESYSa'] = 'FK5'
+
             try:
                 image_header.remove('RADECSYS')
             except KeyError:
                 pass
+
             image_header['COORDSYS'] = ('FK5', 'coordinate system for ra,dec')
             datetime = image_header['DATE-OBS']
             telescope_az = math.radians(float(image_header['AZIMUTH']))
             telescope_alt = math.radians(float(image_header['ALTITUDE']))
+            site_latitude = float(image_header['LAT-OBS'])
+            site_longitude = float(image_header['LONG-OBS'])
+            site_altitude = float(image_header['ALT-OBS'])
+            site = (site_latitude, site_longitude, site_altitude)
             telescope_point = (telescope_az, telescope_alt)
-            moon_distance = calculate_moon_distance(datetime, telescope_point)
+            moon_distance = _calculate_moon_distance(
+                datetime,
+                telescope_point,
+                site
+            )
+            pixels = float(image_header['NAXIS1'])
+            platescale = 4.93
+
             image_header['MOONDIST'] = (moon_distance, 'degrees')
-            image_header['IFOV'] = ('10136', 'arcseconds')
 
             # get center ra, dec from image
             # use this for blocks in future
@@ -61,21 +75,45 @@ def inject_headers(files):
                 coord_string = coord.to_string('hmsdms', sep=':')
                 ra, dec = coord_string.split(' ')
 
+                new_ra = Angle(ra, unit=u.hour)
+                new_dec = Angle(dec, unit=u.degree)
+                old_ra = Angle(image_header['RA'], unit=u.hour)
+                old_dec = Angle(image_header['DEC'], unit=u.degree)
+
+                """
+                pointing_error = np.sqrt((((new_ra.degree - old_ra.degree)**2) +
+                    ((new_dec.degree - old_dec.degree)**2))*3600.)
+
+                print('Pointing error: {} arcseconds'.format(pointing_error))
+                point1 = new_ra.degree * np.rad2deg(np.cos(new_dec.degree))
+                point2 = old_ra.degree * np.rad2deg(np.cos(old_dec.degree))
+                print((point1 - point2)*3600.)
+
+                image_header['P-ERROR'] = (
+                    pointing_error,
+                    'Pointing Error arcsec'
+                )
+                """
                 image_header['RA'] = ra
                 image_header['DEC'] = dec
 
+
             except KeyError:
-                print('ERROR {}'.format(filename))
+                print('Error, no WCS information, REMOVE {}'.format(filename))
                 pass
 
-            #ra_string = '{}:{}:{}'.format(ra)
-            # comment out if you do not want to crop
-            #science_data = image[0].data
-            #image[0].data = science_data[500:2556,500:2556]
+            if crop:
+                science_data = image[0].data
+                image[0].data = science_data[500:2556,500:2556]
+                pixels = len(image[0].data[0])
+
+            image_header['IFOV'] = int(pixels * platescale)
 
             image.flush()
 
-def rename(files):
+    print('\nDone...')
+
+def _rename(files):
     """
     Renames the files to .fits.
     """
@@ -88,13 +126,13 @@ def rename(files):
         else:
 
             new_name = name + '.fits'
-            print('{} ----. {}'.format(file, new_name))
+            print('{} ----> {}'.format(file, new_name))
             os.rename(file, new_name)
+    print('\nDone...')
 
     return None
 
-
-def calculate_moon_distance(datetime, telescope_point):
+def _calculate_moon_distance(datetime, telescope_point, site):
     """
     Uses pyephem to calculate the lunar distance from the telescope pointing.
 
@@ -108,8 +146,8 @@ def calculate_moon_distance(datetime, telescope_point):
     # create pomenis observer for Lemmon
     # NOTE time is in UT of the observation
     pomenis_lemmon = ephem.Observer()
-    pomenis_lemmon.lon, pomenis_lemmon.lat = '-110.789161', '32.442525'
-    pomenis_lemmon.elevation = 2791
+    pomenis_lemmon.lon, pomenis_lemmon.lat = site[1], site[0]
+    pomenis_lemmon.elevation = site[2]
     datetime = '{} {}'.format(datetime[:10], datetime[12:])
     pomenis_lemmon.date = datetime
 
@@ -126,20 +164,33 @@ def calculate_moon_distance(datetime, telescope_point):
 
     return degree_distance
 
-
-if __name__ == '__main__':
+def _parse_arguments():
     """
-    Parses user input for list of files.
+    Parse command line arguments.
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(dest='files', nargs='+')
     parser.add_argument('-r', '--rename', dest='rename', action='store_true')
+    parser.add_argument('-c', '--crop', dest='crop', action='store_true')
     args = parser.parse_args()
 
-    if args.rename:
-        rename(args.files)
-        print('\nDone...\n')
+    return args.files, args.rename, args.crop
+
+def main():
+    print('\n########## nsb_prepare.py')
+    print('Calculates moon distance from pointing and injects headers')
+
+    files, rename, crop = _parse_arguments()
+
+    if rename:
+        _rename(files)
 
     else:
-        inject_headers(args.files)
-        print('\nDone...\n')
+        _inject_headers(files, crop)
+        print('\nFINISHED\n')
+
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
+

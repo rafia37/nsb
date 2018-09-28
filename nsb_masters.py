@@ -4,19 +4,24 @@ import argparse
 from astropy.io import fits
 from astropy.io.fits import getheader, getval, getdata
 import numpy as np
-import shutil
-from tqdm import tqdm
+
 def _get_biases(files):
     """
-
+    Grabs the biases by looking at the IMAGETYP header in the fits
+    files.
     """
     bias_data = []
     bias_files = []
+
     for filename in files:
         type = getval(filename, 'IMAGETYP')
 
         if type == 'Bias Frame':
             bias_data.append(getdata(filename))
+            #temp_data = getdata(filename)
+            #print(np.mean(temp_data))
+            #print(np.std(temp_data))
+            #print(np.median(temp_data))
             bias_files.append(filename)
 
 
@@ -29,120 +34,144 @@ def _get_biases(files):
 
 def _get_flats(files):
     """
-
+    Gets the flats and puts them into dictionaries depending on the
+    filter type.
     """
-    flat_data_v = []
-    flat_files_v = []
-    flat_data_w = []
-    flat_files_w = []
-    flat_data_z = []
-    flat_files_z = []
+    flats = {}
     for filename in files:
-        type = getval(filename, 'IMAGETYP')
+        file_type = getval(filename, 'IMAGETYP')
 
-        if type == 'Flat Field':
-            fil = getval(filename, 'FILTER')
+        if file_type == 'Flat Field':
+            filter_used = getval(filename, 'FILTER')
 
-            if fil == 'v':
-                flat_data_v.append(getdata(filename))
-                flat_files_v.append(filename)
-            elif fil == 'w':
-                flat_data_w.append(getdata(filename))
-                flat_files_w.append(filename)
-            elif fil == 'z':
-                flat_data_z.append(getdata(filename))
-                flat_files_z.append(filename)
-            else: pass
-        else: pass
+            if filter_used not in flats:
+                flats[filter_used] = []
 
-    if len(flat_files_v) != 0:
-        with open('flat_v.txt', 'w') as file:
-            for flat in flat_files_v:
-                line = '{}\n'.format(flat)
-                file.write(line)
-    if len(flat_files_w) != 0:
-        with open('flat_w.txt', 'w') as file:
-            for flat in flat_files_w:
-                line = '{}\n'.format(flat)
-                file.write(line)
-    if len(flat_files_z) != 0:
-        with open('flat_z.txt', 'w') as file:
-            for flat in flat_files_z:
-                line = '{}\n'.format(flat)
-                file.write(line)
+            flats[filter_used].append((filename, getdata(filename)))
 
-    return flat_data_v, flat_data_w, flat_data_z
-
+    return flats
 
 def _make_master_bias(bias_data):
     """
-
+    Creates the master bias using bias data.
     """
-    print('\n### Making master bias')
+    print('\n#--------- Making master bias')
 
     bias_amount = len(bias_data)
     print('Using {} bias images for master bias'.format(bias_amount))
 
     master_bias = np.median(bias_data, axis=0)
+    # get bias stats and inject into header
+    std = np.std(master_bias)
+    mean = np.mean(master_bias)
+    median = np.median(master_bias)
+    variance = np.var(master_bias)
+
+
+
+
+
+
     biashead = fits.Header()
     biashead['IMAGETYP'] = 'Master Bias'
+    biashead['MEAN'] = (mean, 'mean')
+    biashead['MEDIAN'] = (median, 'median')
+    biashead['STD'] = (std, 'standard dev')
+    biashead['VAR'] = (variance, 'variance')
     biasfits = fits.PrimaryHDU(master_bias, header=biashead)
 
     print('Saving master bias ----> masterbias.fits')
     biasfits.writeto('./masterbias.fits', overwrite=True)
 
+    print('\nDone...')
+
     return master_bias
 
-def _make_master_flat(flat_data, master_bias, fil):
+def _make_master_flat(flats, master_bias, only_flat=False):
     """
     Makes the master flat. It normalizes the flat data then takes the median
     of the normalized flat to remove stars. Writes a file named
     "masterflat.fits".
     """
-    if len(flat_data) == 0:
-        return None
+    for key, values in flats.items():
+        print('\n#--------- Creating {} master flat'.format(key))
+        normalized_flats = []
 
-    print('\n### Creating master flat {}'.format(fil))
+        print('Subtracting bias and normalizing flat data')
+        for flat in values:
+            filename = flat[0]
+            data = flat[1]
 
-    flat_amount = len(flat_data)
-    #print('Using {} images to make master flat'.format(flat_amount))
+            if not only_flat:
+                data = data - master_bias
+            normalized_flats.append(
+                np.divide(data, np.median(data[500:2556,500:2556]))
+            )
+        print('Using {} flats'.format(len(normalized_flats)))
+        print('Taking the median of the normalized flats')
+        master_flat_data = np.median(normalized_flats, axis=0)
+        master_flat_header = fits.Header()
+        master_flat_header['IMAGETYP'] = 'Master Flat'
+        master_flat_header['FILTER'] = key
+        new_fits_file = fits.PrimaryHDU(
+            master_flat_data,
+            header=master_flat_header
+        )
 
-    norm_flat = []
-    for flat in tqdm(flat_data):
-        flat_bias_sub = flat - master_bias
+        master_flat_file = 'masterflat-{}.fits'.format(key)
+        print('Saving master flat ----> {}'.format(master_flat_file))
+        new_fits_file.writeto(
+            master_flat_file,
+            overwrite=True
+        )
 
-        norm_flat.append(np.divide(flat_bias_sub, np.median(flat_bias_sub)))
+        print('\nDone...')
 
-    print('Saving master flat ----> masterflat-{}.fits'.format(fil))
-    master_flat = np.median(norm_flat, axis=0)
-    flathead = fits.Header()
-    flathead['IMAGETYP'] = 'Master Flat'
-    flathead['FILTER'] = fil.lower()
-    newflat = fits.PrimaryHDU(master_flat, header=flathead)
+    return None
 
-    newflat.writeto('./masterflat-{}.fits'.format(fil), overwrite=True)
-
-    print('Done...')
-    #return master_flat
-
-if __name__ == '__main__':
+def _parse_arguments():
     """
-    Main loop that goes through the fits files and creates master bias and master flats for each filter.
+    Parses the command line arguments.
     """
-    print('\n##### nsb_masters.py')
-    print('Creates master bias and master flats for filters V, W, and z')
     parser = argparse.ArgumentParser()
-    parser.add_argument('files', nargs='+', help='files to reduce')
-
+    parser.add_argument(
+        'files',
+        nargs='+',
+        help='files to reduce'
+    )
+    parser.add_argument(
+        '-f',
+        '--flat',
+        help='do flats only',
+        action='store_true'
+    )
     args = parser.parse_args()
     files = args.files
+    only_flat = args.flat
 
-    bias_data = _get_biases(files)
-    master_bias = _make_master_bias(bias_data)
-    v, w, z = _get_flats(files)
+    return files, only_flat
 
-    master_flat = _make_master_flat(v, master_bias, 'V')
-    master_flat = _make_master_flat(w, master_bias, 'W')
-    master_flat = _make_master_flat(z, master_bias, 'z')
+def main():
+    """
+    Main loop that creates the master image reduction files.
+    """
+    print('\n########## nsb_masters.py')
+    print('Creates master bias and master flats for each filter')
+
+    files, only_flat = _parse_arguments()
+    master_bias = None
+    if not only_flat:
+        print('doing bias stuff')
+        bias_data = _get_biases(files)
+        master_bias = _make_master_bias(bias_data)
+
+    flats = _get_flats(files)
+    _make_master_flat(flats, master_bias, only_flat)
 
     print('\nFINISHED\n')
+
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
+

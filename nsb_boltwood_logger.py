@@ -38,7 +38,7 @@ def parse_boltwood(boltwood_file, log_name):
 				humidity = split_line[15]
 				dew = split_line[16]
 
-				with open(boltwood_log, 'a') as log:
+				with open(log_name, 'a+') as log:
 					line = [
 						date, # 0
 						time, # 1
@@ -87,7 +87,7 @@ def main():
 	use format.
 	"""
 
-	boltwood_log = 'boltwood.log'
+	boltwood_log = 'boltwood.txt'
 	boltwood_file = parse_arguments()
 
 	parse_boltwood(boltwood_file, boltwood_log)

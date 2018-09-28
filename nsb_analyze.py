@@ -30,6 +30,7 @@ def calculate_nsb(files):
                     date_obs = getval(split_line[1], 'DATE-OBS')
                     t_delta = TimeDelta(25200, format='sec')
                     local_date_obs = Time(date_obs) - t_delta
+                    image_size = float(getval(split_line[1], 'NAXIS1')) ** 2
                 elif split_line[0] == '#platescale_x':
                     platescale = float(split_line[1])
                 elif split_line[0] == '#platescale_y':
@@ -42,8 +43,15 @@ def calculate_nsb(files):
                     bkg_mean = float(split_line[1])
                 elif split_line[0] == '#mask_med':
                     bkg = float(split_line[1])
-                elif split_line[0] == '#mask_std':
-                    std = float(split_line[1])
+                elif split_line[0] == '#std':
+                    std = float(split_line[2])
+                elif split_line[0] == '#mean':
+                    nomask_mean = float(split_line[2])
+                elif split_line[0] == '#med':
+                    nomask_median = float(split_line[2])
+                elif split_line[0] == '#amount':
+                    pixels_used = float(split_line[2])
+                    percent_used = pixels_used / image_size
                 elif split_line[0] == '#center_ra':
                     ra = split_line[1]
                     ra = Angle(ra, u.degree)
@@ -69,9 +77,9 @@ def calculate_nsb(files):
                     zeropoint.append(float(split_line[1]))
                     zeropoint_error.append(float(split_line[2]))
 
-              
+
         med_zero = pp_zeropoint
-        
+
         #print(pp_zero)
         #med_zero = np.median(zeropoint)
         #sigma_clipped_stats(zeropoint, sigma=1.0, iters=10)
@@ -117,5 +125,5 @@ if __name__ == '__main__':
     print('### calculating the nsb measurement')
     print('msky = Z - 2.5log10(med_sky / exposure / platescale^2)\n')
     calculate_nsb(files)
-    print('\nresults ----> phot.csv')
+    print('\nresults ----> nsb_data.csv')
     print('\nDone...\n')

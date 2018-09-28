@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import griddata, Rbf
 import matplotlib.tri as tri
+from astropy.time import Time
+import matplotlib.dates as mdates
 
 
 # setup plotting
@@ -25,7 +27,7 @@ plt.rc('legend', fontsize=SMALL_SIZE)
 plt.rc('figure', titlesize=BIGGER_SIZE)
 
 
-def interpolate_plot(files):
+def interpolate_plot(files, min_mag, max_mag, autoscale=False, sqm=False):
     """
     Interpolate over the data and create a contourf plot. We must
     convert to cartesian, create a grid using np.griddata, then convert
@@ -47,6 +49,10 @@ def interpolate_plot(files):
         elv = np.array(data['elv'])
         values = np.array(data['nsb'])
 
+        if autoscale:
+            min_mag = values.min()
+            max_mag = values.max()
+
         theta = np.radians(azimuth)
         r = elv
         z = values
@@ -62,7 +68,7 @@ def interpolate_plot(files):
         zgrid = griddata((x, y), z, (xgrid, ygrid), method='cubic')
 
 
-        zgrid = ma.masked_invalid(zgrid)
+        #zgrid = ma.masked_invalid(zgrid)
 
         r = np.sqrt(xgrid**2 + ygrid**2)
         theta = np.arctan2(ygrid, xgrid)
@@ -71,8 +77,8 @@ def interpolate_plot(files):
         ax = plt.subplot(111, projection='polar')
         #ax.set_facecolor('k')
         colors = plt.cm.get_cmap('jet_r')
-        levels, steps = np.linspace(18.375, 22.375, 35, retstep=True)
-        ticks = np.linspace(18.375, 22.375, 9)
+        levels, steps = np.linspace(min_mag, max_mag, 50, retstep=True)
+        ticks = np.linspace(min_mag, max_mag, 9)
         cax = ax.contourf(theta, 90-r, zgrid, levels=levels, cmap=colors)
 
         cbar = plt.colorbar(cax, fraction=0.046, pad=0.04, ticks=ticks)
@@ -86,23 +92,32 @@ def interpolate_plot(files):
         #ax.yaxis.grid(False)
         #ax.xaxis.grid(False)
         ax.grid(alpha=0.3)
-        date = data['ut'][0].split('T')[0]
-        filter_used = data['filt'][0]
-        if filter_used != 'z':
-            filter_used = filter_used.upper()
-        plt.title(r'{} Filter Night Sky Brightness {} UT'.format(
-            filter_used,
+
+        if sqm:
+            date = data['sqm_ut'][0].split('T')[0]
+            title = 'Telescope SQM Night Sky Brightness'
+            filter_used = 'sqm'
+        else:
+            date = data['ut'][0].split('T')[0]
+            filter_used = data['filt'][0]
+            if filter_used != 'g' and filter_used != 'z' and filter_used != 'w':
+                filter_used = filter_used.upper()
+                title = "{}' Filter Night Sky Brightness".format(filter_used)
+
+        plt.title(r"{} {} UT".format(
+            title,
             date
         ))
+
         plt.tight_layout()
         plt.ylim(0,90)
-        circle = plt.Circle((0,0), 20, transform=ax.transData._b, color='white')
+        circle = plt.Circle((0,0), 10, transform=ax.transData._b, color='white')
 
         ax.add_artist(circle)
 
         plt.savefig('{}_interpolated_plot.png'.format(filter_used), dpi=600)
 
-def plot(files):
+def plot(files, min_mag, max_mag, autoscale=False, sqm=False):
     """
     Creates a polar plot using triangle contour plotting. This does not
     require the data to be in a grid format or interpolated. Use this
@@ -127,16 +142,19 @@ def plot(files):
         elv = np.array(data['elv'])
         values = np.array(data['nsb'])
 
+        if autoscale:
+            min_mag = values.min()
+            max_mag = values.max()
+
         theta = np.radians(azimuth)
         r = elv
         z = values
-
         fig = plt.figure(figsize=(8,7))
         ax = fig.add_subplot(111, projection='polar')
         #ax.set_facecolor('k')
         colors = plt.cm.get_cmap('jet_r')
-        levels, steps = np.linspace(18.375, 22.375, 35, retstep=True)
-        ticks = np.linspace(18.375, 22.375, 9)
+        levels, steps = np.linspace(min_mag, max_mag, 35, retstep=True)
+        ticks = np.linspace(min_mag, max_mag, 9)
         cax = ax.tricontourf(theta, 90-r, z, levels=levels, cmap=colors)
 
         cbar = plt.colorbar(cax, fraction=0.046, pad=0.04, ticks=ticks)
@@ -151,12 +169,21 @@ def plot(files):
         #ax.xaxis.grid(False)
         ax.grid(alpha=0.3)
 
-        date = data['ut'][0].split('T')[0]
-        filter_used = data['filt'][0]
-        if filter_used != 'z':
-            filter_used = filter_used.upper()
-        plt.title(r'{} Filter Night Sky Brightness {} UT'.format(
-            filter_used,
+        if sqm:
+            date = data['sqm_ut'][0].split('T')[0]
+            title = 'Telescope SQM Night Sky Brightness'
+            filter_used = 'tel_sqm'
+        else:
+            date = data['ut'][0].split('T')[0]
+            filter_used = data['filt'][0]
+            if filter_used != 'g' and filter_used != 'z' and filter_used != 'w':
+                filter_used = filter_used.upper()
+                title = "{}' Filter Night Sky Brightness".format(filter_used)
+
+
+
+        plt.title(r"{} {} UT".format(
+            title,
             date
         ))
 
@@ -165,6 +192,36 @@ def plot(files):
         plt.savefig('{}_plot.png'.format(filter_used), dpi=600)
 
     return None
+
+def plot_zenith(files, autoscale=True):
+    """
+
+    """
+    for file in files:
+        data = ascii.read(file)
+        date_title = data['sqm_ut'][0].split('T')[0]
+        date = Time(data['sqm_ut']).plot_date
+        values = data['nsb']
+
+
+        if autoscale:
+            min_mag = values.min() - .5
+            max_mag = values.max() + .5
+
+        f, ax = plt.subplots(1,1, figsize=(8,8))
+        plt.plot_date(date, values, 'k-')
+
+        fmt = mdates.DateFormatter('%H:%M:%S')
+        ax.xaxis.set_major_formatter(fmt)
+        plt.gcf().autofmt_xdate()
+        plt.xlabel(r'Time (UT)')
+        plt.ylabel(r'Night Sky Brightness (mag/arcsec$^2$)')
+        plt.title(r'Zenith SQM Night Sky Brightness {} UT'.format(date_title))
+        plt.ylim(min_mag, max_mag)
+        ax.grid(alpha=0.3)
+
+        plt.savefig('zenith_sqm.png', dpi=600)
+        plt.clf()
 
 def parse_arguments():
     """
@@ -179,19 +236,54 @@ def parse_arguments():
     args.files : the files in list form
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('files', nargs='+')
+    parser.add_argument(
+        '-n',
+        '--nsb_data',
+        nargs=1,
+        help='nsb data file',
+    )
+    parser.add_argument(
+        '-a',
+        '--autoscale',
+        action='store_true',
+        help='autoscale plot by min/max magnitude'
+    )
+    parser.add_argument(
+        '-t',
+        '--telescope_sqm',
+        nargs=1,
+        help='plot the telescope sqm file'
+    )
+    parser.add_argument(
+        '-z',
+        '--zenith_sqm',
+        nargs=1,
+        help='plot the zenith sqm file'
+    )
+
     args = parser.parse_args()
 
-    return args.files
+    return args.nsb_data, args.autoscale, args.telescope_sqm, args.zenith_sqm
 
 def main():
     """
     Main function.
     """
-    files = parse_arguments()
+    nsb_data, autoscale, telescope_sqm, zenith_sqm = parse_arguments()
 
-    plot(files)
-    interpolate_plot(files)
+    min_mag = 18.
+    max_mag = 22.
+
+    if nsb_data:
+        plot(nsb_data, min_mag, max_mag, autoscale)
+        interpolate_plot(nsb_data, min_mag, max_mag, autoscale)
+
+    if telescope_sqm:
+        plot(telescope_sqm, min_mag, max_mag, autoscale, sqm=True)
+        interpolate_plot(telescope_sqm, min_mag, max_mag, autoscale, sqm=True)
+
+    if zenith_sqm:
+        plot_zenith(zenith_sqm)
 
     sys.exit(0)
 
@@ -246,9 +338,9 @@ if __name__ == '__main__':
 
 
     def rbf_data(files):
-        """
 
-        """
+
+
         for file in files:
             data = ascii.read(file)
 

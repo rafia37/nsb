@@ -8,7 +8,7 @@ import numpy as np
 BOLT_FILE = 'z_nsb_bolt.txt'
 SQM_TEL_FILE = 'z_nsb_sqm_tel.txt'
 SQM_ZENITH_FILE = 'z_nsb_sqm_zenith.txt'
-NSB_FILE = 'z_data.csv'
+NSB_FILE = 'nsb_data.csv'
 
 def inject_headers_sqm(file, format):
     """
@@ -129,11 +129,11 @@ if __name__ == '__main__':
     """
     print('\n####### nsb_inject.py')
 
-    inject_headers_sqm(SQM_TEL_FILE, 'telescope')
+   #inject_headers_sqm(SQM_TEL_FILE, 'telescope')
 
-    inject_headers_sqm(SQM_ZENITH_FILE, 'zenith')
+    #inject_headers_sqm(SQM_ZENITH_FILE, 'zenith')
 
-    inject_headers_boltwood(BOLT_FILE)
+    #inject_headers_boltwood(BOLT_FILE)
 
     inject_headers_nsb(NSB_FILE)
 

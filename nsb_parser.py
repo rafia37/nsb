@@ -81,7 +81,7 @@ def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data, filter_used):
                         min_mag = sqm_tel_data[2][index]
                         az = line_split[3]
                         elv = line_split[4]
-                        tel_col = '{}\t{}\t{}\t{}\t{}\t\t{}\t{:.1f}\n'.format(
+                        tel_col = '{},{},{},{},{},{},{:.1f}\n'.format(
                             line_split[0],
                             str(min_timestamp)[:19],
                             az,
@@ -102,7 +102,7 @@ def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data, filter_used):
                         min_timestamp = x
                         min_counts = sqm_zenith_data[1][index]
                         min_mag = sqm_zenith_data[2][index]
-                        zenith_col = '{}\t{}\t{}\t\t{}\t{:.1f}\n'.format(
+                        zenith_col = '{},{},{},{},{:.1f}\n'.format(
                             line_split[0],
                             str(min_timestamp)[:19],
                             min_counts,
@@ -113,14 +113,15 @@ def calculate_tdelta_sqm(nsb_file, sqm_tel_data, sqm_zenith_data, filter_used):
                     else:
                         pass
                 zenith_add.append(zenith_col)
-    print('    Writing ----> nsb_sqm_tel.txt & nsb_sqm_zenith.txt')
-    with open('{}_nsb_sqm_tel.txt'.format(filter_used), 'w') as f:
-        header = ('filename\t\t\t\t\tsqm_ut\t\t\taz\telv\tcounts\t\tsqm_nsb\tt_delta\n')
+    print('Writing ----> nsb_sqm_tel.csv')
+    with open('{}_sqm_tel.csv'.format(filter_used), 'w') as f:
+        header = ('filename, sqm_ut,az,elv,counts,nsb,t_delta\n')
         f.write(header)
         for line in tel_add:
             f.write(line)
-    with open('{}_nsb_sqm_zenith.txt'.format(filter_used), 'w') as f:
-        header = ('filename\t\t\t\t\tsqm_ut\t\t\tcounts\t\tsqm_nsb\tt_delta\n')
+    print('Writing ----> nsb_sqm_zenith.csv')
+    with open('{}_sqm_zenith.csv'.format(filter_used), 'w') as f:
+        header = ('filename,sqm_ut,counts,nsb,t_delta\n')
         f.write(header)
         for line in zenith_add:
             f.write(line)
@@ -145,7 +146,7 @@ def calculate_tdelta_bolt(nsb_file,bolt_data, filter_used):
                         min_timestamp = t
                         #min_counts = sqm_tel_data[1][index]
                         #min_mag = sqm_tel_data[2][index]
-                        bolt_col = '{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:.1f}\n'.format(
+                        bolt_col = '{},{},{},{},{},{},{},{},{:.1f}\n'.format(
                         line_split[0],
                         str(min_timestamp)[:19],
                         bolt_data[1][index],
@@ -165,10 +166,10 @@ def calculate_tdelta_bolt(nsb_file,bolt_data, filter_used):
                 print('t delta   = {:.2f}'.format(min_delta))
                 print()"""
                 bolt_add.append(bolt_col)
-    print('    Writing ----> nsb_bolt.txt')
+    print('    Writing ----> nsb_bolt.csv')
 
-    with open('{}_nsb_bolt.txt'.format(filter_used), 'w') as f:
-        header = ('filename\t\t\t\t\tbolt_ut\t\t\tsky_t\tamb_t\twind\thum\tdew\tcloud\tt_del\n')
+    with open('{}_bolt.csv'.format(filter_used), 'w') as f:
+        header = ('filename,bolt_ut,sky_t,amb_t,wind,hum,dew,cloud,t_del\n')
         f.write(header)
         for line in bolt_add:
             f.write(line)

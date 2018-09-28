@@ -7,86 +7,45 @@ import numpy as np
 import shutil
 from tqdm import tqdm
 
-def _get_pierside_info(files, fil):
-    """
-    Get the pierside info to rotate the frame.
-    """
-    # create lists
-    west_pierside = []
-    east_pierside = []
-
-    print('\n### Getting pierside info and matching filter {}'.format(fil))
-    for filename in tqdm(files):
-        pierside = getval(filename, 'PIERSIDE')
-        image_fil = getval(filename, 'FILTER')
-
-        if pierside =='WEST' and image_fil == fil:
-            west_pierside.append(filename)
-
-        elif pierside == 'EAST' and image_fil == fil:
-            east_pierside.append(filename)
-
-    with open('west_pierside-{}.txt'.format(fil), 'w') as file:
-        for pierside in west_pierside:
-            line = '{}\n'.format(pierside)
-            file.write(line)
-
-    with open('east_pierside-{}.txt'.format(fil), 'w') as file:
-        for pierside in east_pierside:
-            line = '{}\n'.format(pierside)
-            file.write(line)
-
-    print('Done...')
-    return west_pierside, east_pierside
-
-def _image_reduce(west_pierside, east_pierside, master_bias, master_flat):
+def _image_reduce(files, master_bias, master_flat, do_bias=True):
     """
     Goes through the east and west pierside images and divides them by the
     master flat. If a west pierside image, it must be rotated by 180 degrees.
     """
-    print('\n### Subtracting bias, dividing flat for west images')
-    for filename in tqdm(west_pierside):
-        with fits.open(filename, mode='update') as file:
-            data = file[0].data
-            science_data = data - master_bias
+    print('\n#---------- Reducing images')
+    print('Subtracting bias, dividing flat for images')
+    for file in tqdm(files):
+        with fits.open(file, mode='update') as f:
+            data = f[0].data
 
-            #science_data = np.rot90(science_data, 0)
-            science_header = file[0].header
+            science_header = f[0].header
 
-            science_data = np.divide(science_data, master_flat)
-            science_header['NSB_BIAS'] = 'True'
+            if do_bias:
+                data = np.subtract(data, master_bias)
+                science_header['NSB_BIAS'] = 'True'
+            else:
+                data = np.subtract(data, 1100.)
+
+
+            #science_data = np.rot90(science_data, 2)
+
+            science_data = np.divide(data, master_flat)
+            #science_data = np.clip(science_data, 0, 65535)
+
             science_header['NSB_FLAT'] = 'True'
 
-            file[0].data = science_data
+            f[0].data = science_data
 
-            file.flush()
-    print('Done...')
-
-    print('\n### Subtracting bias, dividing flat for east images')
-    for filename in tqdm(east_pierside):
-        with fits.open(filename, mode='update') as file:
-            data = file[0].data
-
-            #science_data = np.rot90(data, 0)
-            science_header = file[0].header
-
-            science_data = data - master_bias
-            science_data = np.divide(science_data, master_flat)
-
-            science_header['NSB_BIAS'] = 'True'
-            science_header['NSB_FLAT'] = 'True'
-
-            file[0].data = science_data
-
-            file.flush()
-    print('Done...\n')
+            f.flush()
+    print('\nDone...')
 
 if __name__ == '__main__':
     """
     Main loop that goes through, seperates files by pierside, and reduces the
     science images.
     """
-    print('\n##### nsb_reduce.py')
+    print('\n########## nsb_reduce.py')
+    print('Reduces science frames by subtracting bias and dividing flat')
     parser = argparse.ArgumentParser()
     parser.add_argument('files', nargs='+', help='files to reduce')
     parser.add_argument('-b', '--bias', help='the master bias')
@@ -97,9 +56,13 @@ if __name__ == '__main__':
     bias = args.bias
     flat = args.flat
 
-    master_bias = getdata(bias)
-    master_flat = getdata(flat)
-    fil = getval(flat, 'FILTER')
 
-    west_pierside, east_pierside = _get_pierside_info(files, fil)
-    _image_reduce(west_pierside, east_pierside, master_bias, master_flat)
+    if bias:
+        master_bias = getdata(bias)
+    else:
+        do_bias = False
+    master_flat = getdata(flat)
+
+    _image_reduce(files, master_bias, master_flat)
+
+    print('\nFINISHED\n')
