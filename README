@@ -1,0 +1,100 @@
+Preparing and reducing images for processing
+
+Mounting google drive to the linux machine allows the user to copy files using unix commands rather than using the google drive web interface to zip and download in chunks. 
+google-drive-ocamlfuse ~/google_drive
+ls ~/google_drive
+should show google drive directory
+Copy files to the desktop (or where ever makes you happy)
+cp -r 20180906 ~/Desktop/
+-r recursively copies all nested folders and files in the main directory
+Create raw directory and copy files (for backup because downloading takes a while)
+mkdir raw
+cp *.fts raw/
+Create a calibration folder where you put both the flats and biases in
+mkdir calibration
+cp Auto*.fts calibration/
+cp Bias*.fit calibration
+Create folders for each filter (must analyze them separately)
+mkdir V w z
+Copy all science files to each filter folder
+cp *-v.fts V/
+Rename all files to end in .fits using nsb_prepare.py -r option
+nsb_prepare.py *.fit -r 
+Navigate to calibration folder
+Create master images in calibration using nsb_masters.py *.fits
+nsb_masters.py *.fits
+This goes through and sorts biases from flats in different filters
+Creates a masterbias
+Then subtracts the masterbias from the flats
+Normalizes the flats
+Then creates masterflats
+Verify the master flats and bias look alright
+Now to prepare to reduce V data
+copy masterbias and masterflat-V.fits to V directory
+navigate to the V folder
+Make sure they are renamed to end in .fits
+nsb_reduce.py kp*.fits -b masterbias.fits -f masterflat-v.fits
+Verify the reduced images look ok
+If needed, you might need to mess with the rotation of the images
+Prepare the images for PP using nsb_prepare.py kp*.fits -c
+nsb_prepare.py kp*.fits -c
+This injects the headers, calculates the moon distance, and crops the images.
+Crops 500 pixels off on each side. 
+This process will also tell you which images do not have WCS info injected, that means these were not successfully solved by astrometry.net or pinpoint. Remove them before continuing.
+
+THE IMAGES ARE PREPARED AND REDUCED FOR PHOTOMETRYPIPELINE
+
+Running the images through PHOTOMETRYPIPELINE
+
+PHOTOMETRYPIPELINE process is quite slow. I like to run it overnight. It does get hung up on some images (why? It happens when it does not have any stars available in the GAIA or TGAS astrometry catalog to match to the field)
+
+Start the pipeline on all images using nsb_process.sh
+nsb_process.sh kp*.fits
+If it hangs, use control-c and it will exit out of the current process. It will continue onto the next part. You do not have to exit and restart. 
+Again, this takes a long time. Speed up the process by cropping to a smaller frame or install the linear algebra package with threading enabled. 
+You can change catalogs and more in mytelescopes.py in PP folder
+I have modified PP with the correct transformations and a backdoor to get the night sky brightness information we need. 
+
+DO NOT UPDATE PHOTOMETRYPIPELINE OR YOU WILL NEED TO REWRITE ALL OF MY WORK
+
+A backup is made on the google drive in Sky Brightness.
+
+Night Sky Brightness Calculation
+
+Now you will have a nsb_FILENAME.txt for each file. 
+This contains the zeropoint and all the goodies for NSB
+Use nsb_analyze.py to calculate the zeropoint
+nsb_analyze.py nsb_kp*.txt
+Creates nsb_data.csv
+You now have the main file with the night sky brightness measurement. The remaining steps are to plot the data, match SQM data with each file, match boltwood data with each file, package it all together for LL, and create a readme with information about the package for LL.
+
+Parsing SQM and boltwood files to find the files with smallest time deltas
+
+We need to put the boltwood in the correct format and manually edit the output of the script to a time frame near our observations, or else matching will take forever. This part could be improved. Then we parse the boltwood and sqm timestamps and calculate the tdelta from each fits file, the smallest tdelta will be assigned with the matching SQM and boltwood info.
+
+Use nsb_boltwood_logger.py
+nsb_boltwood_logger.py NAME OF BOLTWOOD FILE
+Creates boltwood.txt
+Delete the rows far away from the timeframe of observation in boltwood.txt
+Use nsb_parser.py to match information
+nsb_parser.py nsb_data.csv boltwood.txt sqmtel.txt sqmzenith.txt
+This will take some time
+Creates 
+nsb_bolt.csv
+nsb_sqm_tel.csv
+nsb_sqm_zenith.csv
+These files have the matched fits files with measurements
+
+Plotting the data
+
+Now that we have all the required information, we can plot the data.
+
+Use nsb_plot.py
+This has many options to plot the data. Use -h or --help to learn more about the options or read the code. 
+You might need to manually edit nsb_plot.py to change the magnitude range (y-axis) to better fit the data.
+
+Inject the sqm, bolt, and nsb data into the RAW RAW RAW files for LL
+
+Remember that raw folder with all the raw V fits files, well copy that into a raw folder called LL_raw. 
+Move nsb_data.csv, nsb_sqm_tel.csv, nsb_bolt.csv, and nsb_sqm_zenith.csv to LL_raw
+Use nsb_inject.py 
