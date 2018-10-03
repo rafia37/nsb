@@ -102,7 +102,7 @@ def interpolate_plot(files, min_mag, max_mag, autoscale=False, sqm=False):
             filter_used = data['filt'][0]
             if filter_used != 'g' and filter_used != 'z' and filter_used != 'w':
                 filter_used = filter_used.upper()
-                title = "{}' Filter Night Sky Brightness".format(filter_used)
+            title = "{}' Filter Night Sky Brightness".format(filter_used)
 
         plt.title(r"{} {} UT".format(
             title,
@@ -111,7 +111,7 @@ def interpolate_plot(files, min_mag, max_mag, autoscale=False, sqm=False):
 
         plt.tight_layout()
         plt.ylim(0,90)
-        circle = plt.Circle((0,0), 10, transform=ax.transData._b, color='white')
+        circle = plt.Circle((0,0), 15, transform=ax.transData._b, color='white')
 
         ax.add_artist(circle)
 
@@ -178,7 +178,8 @@ def plot(files, min_mag, max_mag, autoscale=False, sqm=False):
             filter_used = data['filt'][0]
             if filter_used != 'g' and filter_used != 'z' and filter_used != 'w':
                 filter_used = filter_used.upper()
-                title = "{}' Filter Night Sky Brightness".format(filter_used)
+
+            title = "{}' Filter Night Sky Brightness".format(filter_used)
 
 
 
@@ -269,22 +270,39 @@ def main():
     """
     Main function.
     """
+    print('\n########## nsb_plot.py')
+    print('Creates interpolated plots and polar plots for the nsb data')
     nsb_data, autoscale, telescope_sqm, zenith_sqm = parse_arguments()
 
     min_mag = 18.
     max_mag = 22.
 
     if nsb_data:
+        print('\n#---------- Plotting Pomenis measurements')
+        print('Creating polar plot')
         plot(nsb_data, min_mag, max_mag, autoscale)
+        print('\nDone...')
+
+        print('\nCreating interpolated polar plot')
         interpolate_plot(nsb_data, min_mag, max_mag, autoscale)
+        print('\nDone...')
 
     if telescope_sqm:
+        print('\n#--------- Plotting telescope SQM measurements')
+        print('Creating polar plot')
         plot(telescope_sqm, min_mag, max_mag, autoscale, sqm=True)
+        print('\nDone')
+        print('\nCreating interpolated polar plot')
         interpolate_plot(telescope_sqm, min_mag, max_mag, autoscale, sqm=True)
+        print('\nDone...')
 
     if zenith_sqm:
+        print('\n#--------- Plotting zenith SQM measurements')
+        print('Creating zenith sqm line plot')
         plot_zenith(zenith_sqm)
+        print('\nDone...')
 
+    print('\nFINISHED\n')
     sys.exit(0)
 
 if __name__ == '__main__':
