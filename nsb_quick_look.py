@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from astropy.io.fits import getdata
+from astropy.io.fits import getdata, getval
 import numpy as np
 import os, sys
 from astropy.stats import sigma_clipped_stats
@@ -93,7 +93,7 @@ def _get_background(data, sigma_clipping=True):
         mean, median, std = sigma_clipped_stats(
             data,
             sigma=3.0,
-            iters=3
+            iters=5
         )
 
     else:
@@ -107,10 +107,14 @@ def _print_results(file, mean, median, std):
     """
     Print the results of the analysis to the termainl.
     """
-    print('\nFile:\t{}'.format(file))
-    print('Mean:\t{:.2f}'.format(mean))
-    print('Median:\t{:.2f}'.format(median))
-    print('Std:\t{:.2f}'.format(std))
+
+    exposure_time = getval(file, 'EXPTIME')
+
+    print('\nFile:\t\t{}'.format(file))
+    print('\nExposure:\t{}'.format(exposure_time))
+    print('Mean:\t\t{:.2f}'.format(mean))
+    print('Median:\t\t{:.2f}'.format(median))
+    print('Std:\t\t{:.2f}'.format(std))
 
     return None
 
@@ -128,9 +132,9 @@ def main():
 
     else:
         for file in files:
-            data = getdata(file)
+            data = getdata(file).astype(np.float)
             if not reduced_already:
-                master_bias_data = getdata(master_bias)
+                master_bias_data = getdata(master_bias).astype(np.float)
                 data = _subtract_master_bias(data, master_bias_data)
             mean_bkg, median_bkg, std_bkg = _get_background(data)
             _print_results(file, mean_bkg, median_bkg, std_bkg)

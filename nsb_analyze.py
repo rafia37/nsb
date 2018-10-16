@@ -78,15 +78,13 @@ def calculate_nsb(files):
                     zeropoint_error.append(float(split_line[2]))
 
 
-        med_zero = pp_zeropoint
-
         #print(pp_zero)
         #med_zero = np.median(zeropoint)
         #sigma_clipped_stats(zeropoint, sigma=1.0, iters=10)
         #print(med_zero)
         #med_zero_error = np.median(zeropoint_error)
 
-        nsb = med_zero - (2.5*np.log10( ((bkg / exposure ) / (platescale ** 2)) ))
+        nsb = pp_zeropoint - (2.5*np.log10( ((nomask_median / exposure ) / (platescale ** 2)) ))
 
 
         phot_co = ''
