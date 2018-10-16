@@ -103,7 +103,7 @@ def calculate_nsb(files):
                 bkg_mean,
                 bkg,
                 std,
-                med_zero,
+                pp_zeropoint,
                 nsb
             )
             f.write(line)
