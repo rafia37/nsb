@@ -5,14 +5,16 @@ import argparse
 from astropy.io import ascii
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy.interpolate import griddata, Rbf
 import matplotlib.tri as tri
 from astropy.time import Time
 import matplotlib.dates as mdates
+import pdb
 
 
 # setup plotting
-plt.rc('text', usetex=True) # change to False for no latex
+plt.rc('text', usetex=False) # change to False for no latex
 plt.rc('font', family='serif')
 SMALL_SIZE = 12
 MEDIUM_SIZE = 14
@@ -43,7 +45,7 @@ def interpolate_plot(files, min_mag, max_mag, autoscale=False, sqm=False):
     """
     for file in files:
 
-        data = ascii.read(file)
+        data = pd.read_csv(file).dropna(subset = ['nsb']) #Drops rows where the 'nsb' column has nans
 
         azimuth = np.array(data['az'])
         elv = np.array(data['elv'])
@@ -135,7 +137,7 @@ def plot(files, min_mag, max_mag, autoscale=False, sqm=False):
     for file in files:
 
         # read data into astropy table
-        data = ascii.read(file)
+        data = pd.read_csv(file).dropna(subset = ['nsb'])
 
         # grab the needed information
         azimuth = np.array(data['az'])
@@ -187,7 +189,7 @@ def plot(files, min_mag, max_mag, autoscale=False, sqm=False):
             title,
             date
         ))
-
+        
         plt.tight_layout()
         plt.ylim(0,90)
         plt.savefig('{}_plot.png'.format(filter_used), dpi=600)
@@ -199,10 +201,11 @@ def plot_zenith(files, autoscale=True):
 
     """
     for file in files:
-        data = ascii.read(file)
+        data = pd.read_csv(file).dropna(subset = ['nsb']) #Drops rows where the 'nsb' column has nans
         date_title = data['sqm_ut'][0].split('T')[0]
         date = Time(data['sqm_ut']).plot_date
         values = data['nsb']
+        pdb.set_trace()
 
 
         if autoscale:
