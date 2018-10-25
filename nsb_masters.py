@@ -4,6 +4,7 @@ import argparse
 from astropy.io import fits
 from astropy.io.fits import getheader, getval, getdata
 import numpy as np
+import pdb
 
 def _get_biases(files):
     """
@@ -14,7 +15,10 @@ def _get_biases(files):
     bias_files = []
 
     for filename in files:
-        type = getval(filename, 'IMAGETYP')
+        try:
+            type = getval(filename, 'IMAGETYP')
+        except OSError:
+            continue
 
         if type == 'Bias Frame':
             bias_data.append(getdata(filename))
@@ -39,7 +43,10 @@ def _get_flats(files):
     """
     flats = {}
     for filename in files:
-        file_type = getval(filename, 'IMAGETYP')
+        try:
+            file_type = getval(filename, 'IMAGETYP')
+        except OSError:
+            continue
 
         if file_type == 'Flat Field':
             filter_used = getval(filename, 'FILTER')
@@ -160,10 +167,12 @@ def main():
 
     files, only_flat = _parse_arguments()
     master_bias = None
+
     if not only_flat:
         print('doing bias stuff')
         bias_data = _get_biases(files)
         master_bias = _make_master_bias(bias_data)
+
 
     flats = _get_flats(files)
     _make_master_flat(flats, master_bias, only_flat)
