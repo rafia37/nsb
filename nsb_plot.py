@@ -45,11 +45,14 @@ def interpolate_plot(files, min_mag, max_mag, autoscale=False, sqm=False):
     """
     for file in files:
 
-        data = pd.read_csv(file).dropna(subset = ['nsb']) #Drops rows where the 'nsb' column has nans
+        #data = pd.read_csv(file).dropna(subset = ['nsb']) #Drops rows where the 'nsb' column has nans
 
-        azimuth = np.array(data['az'])
-        elv = np.array(data['elv'])
-        values = np.array(data['nsb'])
+        data = ascii.read(file)
+
+        original_values = np.array(data['nsb']) #nsbvalues from original data table that may contain NaNs
+        values = original_values[np.isfinite(original_values)]
+        azimuth = np.array(data['az'][np.isfinite(original_values)])
+        elv = np.array(data['elv'][np.isfinite(original_values)])
 
         if autoscale:
             min_mag = values.min()
@@ -136,13 +139,15 @@ def plot(files, min_mag, max_mag, autoscale=False, sqm=False):
     """
     for file in files:
 
-        # read data into astropy table
-        data = pd.read_csv(file).dropna(subset = ['nsb'])
+        #data = pd.read_csv(file).dropna(subset = ['nsb']) #Drops rows where the 'nsb' column has nans
 
-        # grab the needed information
-        azimuth = np.array(data['az'])
-        elv = np.array(data['elv'])
-        values = np.array(data['nsb'])
+        data = ascii.read(file)
+
+        #Grab needed info
+        original_values = np.array(data['nsb']) #nsbvalues from original data table that may contain NaNs
+        values = original_values[np.isfinite(original_values)]
+        azimuth = np.array(data['az'][np.isfinite(original_values)])
+        elv = np.array(data['elv'][np.isfinite(original_values)])
 
         if autoscale:
             min_mag = values.min()
@@ -189,7 +194,7 @@ def plot(files, min_mag, max_mag, autoscale=False, sqm=False):
             title,
             date
         ))
-        
+
         plt.tight_layout()
         plt.ylim(0,90)
         plt.savefig('{}_plot.png'.format(filter_used), dpi=600)
@@ -201,11 +206,16 @@ def plot_zenith(files, autoscale=True):
 
     """
     for file in files:
-        data = pd.read_csv(file).dropna(subset = ['nsb']) #Drops rows where the 'nsb' column has nans
+        #data = pd.read_csv(file).dropna(subset = ['nsb']) #Drops rows where the 'nsb' column has nans
+
+        data = ascii.read(file)
+
+        original_values = np.array(data['nsb']) #nsbvalues from original data table that may contain NaNs
+        values = original_values[np.isfinite(original_values)]
         date_title = data['sqm_ut'][0].split('T')[0]
-        date = Time(data['sqm_ut']).plot_date
-        values = data['nsb']
-        pdb.set_trace()
+        date = Time(data['sqm_ut']).plot_date[np.isfinite(original_values)]
+        time_sorted_date = np.sort(date)
+        time_sorted_values = values[np.argsort(date)]
 
 
         if autoscale:
